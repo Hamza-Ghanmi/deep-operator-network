@@ -1,0 +1,24 @@
+arch:
+  branch:
+    nr_layers: 4
+    layer_size: 128
+    n_sensors: 100
+  trunk:
+    nr_layers: 4
+    layer_size: 128
+    n_dim: 1
+  dropout: 0.1
+
+scheduler:
+  decay_rate: 0.9
+  decay_steps: 1000
+
+training:
+  rec_validation_freq: 500
+  max_steps: 20000
+  learning_rate: 1.0e-3
+  weight_decay: 1.0e-4
+
+batch_size:
+  train: 512
+  validation: 100

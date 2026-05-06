@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Dataset and large outputs (generate locally)
+dataset/
+outputs/*.pt
+outputs/*.mp4
+outputs/*.pdf
+outputs/*.npz
+
+# Keep rendered PNGs for README
+!outputs/*.png
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# uv / pip
+uv.lock
+*.lock
+
+# Large external data (NGC download)
+physicsnemo_sym_examples_supplemental_materials_v0.0.1/
+
+# Claude Code
+.claude/
+.agents/
+skills-lock.json
+
+# FreeCAD / VTK source data
+data/

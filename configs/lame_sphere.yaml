@@ -1,0 +1,49 @@
+normalisation:
+  # Branch-net input normalisation (all parameters mapped to [0, 1])
+  pi_min:  1.0e+6         # Pa  — lower bound of internal pressure range
+  pi_max:  20.0e+6        # Pa  — upper bound
+  pe_min:  0.0            # Pa
+  pe_max:  5.0e+6         # Pa
+  E_log_min: 17.72759     # ln(50e9)  — log-lower bound for Young's modulus
+  E_log_max: 19.33727     # ln(250e9) — log-upper bound
+  nu_min:  0.20
+  nu_max:  0.45
+  # Target field normalisation
+  sigma_vm_scale: 1.0e+8  # Pa (100 MPa) — divides sigma_vm targets to [0, ~1]
+
+deeponet:
+  param_dim: 4      # (p_i, p_e, E, nu)
+  p: 128            # latent dimension shared by branch and trunk
+  width: 256        # MLP hidden width
+  depth: 3          # number of Linear layers per sub-network
+  trunk_in_dim: 1   # 1 = radial distance r (correct for Lamé sphere: σ_vm depends only on r)
+
+training:
+  epochs: 100
+  lr: 1.0e-3
+  weight_decay: 1.0e-4
+  val_every: 10
+  don_batch: 32
+  eval_batch: 8
+
+laptop:
+  # Streaming row limits — only this many rows are read from each parquet split.
+  # Peak RAM during load: n_train * 409230 * 4B per batch (128 rows at a time ≈ 210 MB).
+  # After subsampling to n_query_pts: n_train * n_query_pts * 4B ≈ 33 MB total.
+  n_train: null   # null = use all available rows from each split
+  n_val:   null
+  n_test:  null
+  # Fixed random subset of FEM mesh points per sample (from 409 230 total).
+  # 4096 pts gives good radial coverage while keeping GPU tensors tiny.
+  n_query_pts: 4096
+  # Per-batch random subsampling of the fixed 4096-point pool.
+  # Reduces forward-pass GPU memory: 32 cases * 1024 pts * 4B = 128 KB.
+  n_batch_pts: 1024
+  seed: 0
+
+dataset:
+  n_cases: 5000
+  seed: 42
+  n_workers: null   # null → os.cpu_count() (field gen) / 8 (dataset builder)
+  split: [0.70, 0.15, 0.15]
+  cases_dir: dataset/lame_sphere_cases   # where generate_lame_sphere_fields.py writes .vtu files

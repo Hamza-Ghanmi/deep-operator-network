@@ -1,0 +1,33 @@
+normalisation:
+  t_scale: 200.0
+  alpha_min: 0.005
+  alpha_max: 0.05
+  t_max: 30.0
+
+fno:
+  n_modes: [12, 12]
+  hidden_channels: 32
+  n_layers: 4
+  in_channels: 5
+  out_channels: 1
+
+deeponet:
+  param_dim: 7
+  p: 128
+  width: 256
+  depth: 3
+
+training:
+  epochs: 200
+  lr: 1.0e-3
+  weight_decay: 1.0e-4
+  val_every: 10
+  fno_batch: 8
+  don_batch: 128
+  eval_batch: 16
+
+dataset:
+  n_cases: 50
+  seed: 42
+  n_workers: 4
+  split: [0.70, 0.15, 0.15]
