@@ -47,6 +47,5 @@ physicsnemo_sym_examples_supplemental_materials_v0.0.1/
 .agents/
 skills-lock.json
 
-# FreeCAD / VTK source data (sphere mesh tracked; other data files excluded)
+# FreeCAD / VTK source data
 data/
-!data/sphere-FEMMeshGmsh.vtk
