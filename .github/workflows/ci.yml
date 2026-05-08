@@ -20,7 +20,7 @@ jobs:
         run: pip install torch==2.5.1+cpu --index-url https://download.pytorch.org/whl/cpu
 
       - name: Install core dependencies
-        run: pip install numpy scipy matplotlib tqdm pyyaml neuraloperator pyarrow pandas
+        run: pip install numpy scipy matplotlib tqdm pyyaml neuraloperator pyarrow pandas pyvista
 
       - name: Install package (no-deps to skip CUDA/pyvista)
         run: pip install -e . --no-deps
@@ -47,7 +47,7 @@ jobs:
         run: pip install torch==2.5.1+cpu --index-url https://download.pytorch.org/whl/cpu
 
       - name: Install core dependencies
-        run: pip install numpy scipy matplotlib tqdm pyyaml neuraloperator pyarrow pandas
+        run: pip install numpy scipy matplotlib tqdm pyyaml neuraloperator pyarrow pandas pyvista
 
       - name: Install package (no-deps to skip CUDA/pyvista)
         run: pip install -e . --no-deps
