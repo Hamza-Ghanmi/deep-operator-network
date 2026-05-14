@@ -46,6 +46,3 @@ physicsnemo_sym_examples_supplemental_materials_v0.0.1/
 .claude/
 .agents/
 skills-lock.json
-
-# FreeCAD / VTK source data
-data/

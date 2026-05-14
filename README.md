@@ -3,7 +3,7 @@
 Two self-contained case studies applying neural operator architectures to physics problems with exact analytical solutions:
 
 1. **2D Heat Equation** — FNO vs DeepONet2D on transient heat diffusion over a unit square. A Fourier-series solver provides the ground truth.
-2. **Lamé Hollow Sphere** — DeepONet3D on 3D linear elasticity. Given inner/outer pressures, Young's modulus, and Poisson's ratio, the model predicts the von Mises stress field anywhere in the shell. The exact Lamé (1852) solution serves as ground truth.
+2. **Lamé Hollow Sphere** — DeepONet3D on 3D linear elasticity. Given the net pressure differential, the model predicts the von Mises stress field anywhere in the shell. The exact Lamé (1852) solution serves as ground truth.
 
 Both problems have known closed-form solutions, making them rigorous benchmarks: every prediction can be checked against exact physics.
 
@@ -25,19 +25,21 @@ Given four boundary temperatures, initial temperature, thermal diffusivity α, a
 
 ## Case 2: Lamé Hollow Sphere
 
-**Operator:** G(p\_i, p\_e, E, ν) → σ\_vm(x, y, z) ∈ ℝ^{N\_pts}
+**Operator:** G(Δp) → σ\_vm(r) ∈ ℝ^{N\_pts}
 
-A thick-walled hollow sphere (inner radius a = 0.4 m, outer radius b = 1.0 m) under uniform internal and external pressure. The output is the von Mises equivalent stress at arbitrary query points in the shell.
+A thick-walled hollow sphere (inner radius a = 0.2 m, outer radius b = 0.5 m) under combined internal and external pressure. The model predicts the von Mises equivalent stress at arbitrary query points in the shell.
 
-| Model | Architecture | Params | Training |
-|---|---|---|---|
-| DeepONet3D | branch MLP(4→256³→128), trunk MLP(1→256³→128) | ~397 K | 100 epochs |
+**EDA finding:** the Lamé solution shows σ\_vm(r) = |C₂| · 3/(2r³) where C₂ ∝ Δp = p\_i − p\_e. Young's modulus E and Poisson's ratio ν do not appear in the von Mises expression — confirmed by R² = 1.000 between Δp and max(σ\_vm) across 5 000 cases. The branch therefore takes only Δp as input (param\_dim = 1).
 
-Trunk input dimension is 1 (radial distance r) — the field is radially symmetric, so (x, y, z) carries no additional information beyond r = ‖·‖. The model remains mesh-free: it can evaluate at any point in the shell at inference time.
+| Model | Architecture | Params | Test Rel L2 (mean ± std) | Max abs error |
+|---|---|---|---|---|
+| DeepONet3D | branch MLP(1→256→256→256→128), trunk MLP(1→256→256→256→128) | ~330 K | 0.008 ± 0.010 | 0.78 MPa |
+
+Trunk input dimension is 1 (radial distance r = ‖xyz‖) — the field is radially symmetric, so (x, y, z) carries no additional information beyond r. The model is mesh-free and can evaluate at any point in the shell at inference time.
 
 ![Lamé sphere — von Mises stress cross-section](outputs/lame_sphere_3d_case375_crosssection.png)
 
-*Von Mises stress field, cross-section view. Highest stress at the inner wall (r = 0.4 m), decaying toward the outer surface — consistent with exact Lamé theory.*
+*Von Mises stress field, cross-section view. Highest stress at the inner wall (r = 0.2 m), decaying as 1/r³ toward the outer surface — consistent with exact Lamé theory.*
 
 Full figures and training curves: [RESULTS.md](RESULTS.md)
 
@@ -48,8 +50,8 @@ Full figures and training curves: [RESULTS.md](RESULTS.md)
 **Requirements:** Python 3.10+, GPU optional.
 
 ```bash
-git clone <repo-url>
-cd neural-operators
+git clone https://github.com/Hamza-Ghanmi/deep-operator-network.git
+cd deep-operator-network
 
 python -m venv .venv && source .venv/bin/activate
 
@@ -77,13 +79,13 @@ python scripts/generate_animation.py    # outputs/heat2d_animation.mp4
 The sphere mesh (`data/sphere-FEMMeshGmsh.vtk`) is generated from the FreeCAD model in `data/` using Gmsh. Once the mesh is in place:
 
 ```bash
-python scripts/generate_lame_sphere_fields.py   # compute analytical fields → dataset/lame_sphere_cases/
+python scripts/generate_lame_sphere_fields.py   # analytical fields → dataset/lame_sphere_cases/
 python scripts/generate_lame_sphere_dataset.py  # assemble Parquet splits → dataset/lame_sphere_*.parquet
 jupyter notebook notebooks/lame_sphere_train.ipynb
 python scripts/render_lame_sphere_3d.py         # outputs/lame_sphere_3d_*.png
 ```
 
-Note: the full Lamé sphere dataset is ~30 GB. The notebook's `laptop:` config block supports subsampling query points for memory-constrained machines.
+The full Lamé sphere dataset is ~30 GB. On the first notebook run the data-loading cell streams all three Parquet splits and saves a 69 MB cache (`dataset/lame_sphere_training_data.npz`); subsequent runs load from the cache in under a second. The `laptop:` config block in `configs/lame_sphere.yaml` controls query-point subsampling for memory-constrained machines.
 
 ---
 
@@ -114,7 +116,9 @@ configs/
 └── lame_sphere.yaml          # Lamé sphere (5 000 cases, 100 epochs, laptop subsampling)
 notebooks/
 ├── heat2d_train_compare.ipynb   # FNO vs DeepONet2D on heat equation
-├── lame_sphere_train.ipynb      # DeepONet3D on 3D elasticity
+├── lame_sphere_train.ipynb      # DeepONet3D on Lamé sphere (EDA-driven improvements)
+├── eda_lame_sphere.ipynb        # exploratory data analysis — Lamé sphere dataset
+├── eda_anti_derivative.ipynb    # exploratory data analysis — anti-derivative dataset
 └── fno_anti_derivative.ipynb    # FNO on 1D anti-derivative (bonus)
 scripts/
 ├── generate_heat2d_dataset.py      # heat2d Parquet dataset (parallel, --config flag)
@@ -134,7 +138,19 @@ docs/
 
 ## What I learned
 
-FNO reaches roughly 1.5× lower error than DeepONet on the heat equation because spectral convolution directly parameterises the Fourier modes the PDE lives in — it is, in a sense, the right inductive bias for this problem. By contrast, the Lamé sphere is a natural fit for DeepONet: the operator maps four scalar parameters to a field, and the branch-trunk decomposition separates "which physics" from "where to query" cleanly. For the Lamé problem the trunk input is just r = ‖xyz‖ (one scalar, not three coordinates) because the von Mises field is radially symmetric — discovering and exploiting this reduces the trunk's learning problem dramatically. FNO is grid-tied to the 32×32 training discretisation while DeepONet is inherently mesh-free, which proved important for the Lamé sphere where the query mesh is irregular and contains ~400 K points. On both problems, normalisation choices mattered more than architecture: log-scale for α and E, min-max for pressures and temperatures. Finally, having an exact analytical baseline for both problems made debugging unambiguous — when predictions diverged from the Lamé solution near the inner wall, it pointed immediately to insufficient radial resolution in the query grid rather than a model bug.
+**FNO vs DeepONet on the heat equation.** FNO reaches roughly 1.5× lower error than DeepONet2D because spectral convolution directly parameterises the Fourier modes the PDE lives in — it is, in a sense, the right inductive bias for this problem.
+
+**DeepONet is the natural fit for the Lamé sphere.** The operator maps scalar parameters to a field, and the branch-trunk decomposition separates "which physics" from "where to query" cleanly. Because σ\_vm is radially symmetric the trunk takes r = ‖xyz‖ (one scalar, not three coordinates), reducing its learning problem to fitting 1/r³. FNO would require a regular grid; DeepONet is inherently mesh-free, which matters when query points live on an irregular 409 230-node FEM mesh.
+
+**EDA before training pays off.** Exploratory analysis of the Lamé dataset (`eda_lame_sphere.ipynb`) revealed three actionable findings that each translated directly into a code change:
+
+1. *R² = 1.000 for Δp → σ\_vm* — E and ν are algebraically absent from the Lamé von Mises formula. Passing them to the branch added two noise dimensions. Dropping them (param\_dim 4 → 1) reduced the worst-case test rel-L2 from 0.55 to 0.16.
+2. *1590× dynamic range in σ\_vm* — the fixed-divisor normalisation made low-Δp cases nearly invisible in MSE loss. Switching to log-space targets made every case contribute equally without a custom ε heuristic.
+3. *6:1 outer/inner vertex imbalance* — the inner wall (peak stress, safety-critical) had 6× fewer mesh points than the outer surface. Stratified radial sampling across 8 equal shells corrected the coverage.
+
+Combined, these changes improved mean rel-L2 from 0.026 to 0.008 and max absolute error from 1.90 MPa to 0.78 MPa with identical architecture and training time.
+
+**Normalisation choices matter more than architecture tuning.** On both problems, getting the input and target scales right (log-uniform for E and α, min-max for pressures and temperatures, log-space for σ\_vm targets) had larger impact than hyperparameter search. Having exact analytical baselines made debugging unambiguous — when predictions diverged near the inner wall it pointed immediately to the mesh imbalance rather than a model bug.
 
 ---
 
