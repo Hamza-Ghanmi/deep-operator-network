@@ -8,11 +8,19 @@ normalisation:
   E_log_max: 19.33727     # ln(250e9) — log-upper bound
   nu_min:  0.20
   nu_max:  0.45
-  # Target field normalisation
-  sigma_vm_scale: 1.0e+8  # Pa (100 MPa) — divides sigma_vm targets to [0, ~1]
+  # Target field normalisation (legacy — no longer used for training)
+  sigma_vm_scale: 1.0e+8  # Pa (100 MPa) — kept for reference only
+  # EDA-driven additions
+  # EDA Section 9: R²=1.000 for Δp→σ_vm; E and ν are irrelevant for this target.
+  dp_min:  0.1e+6         # Pa — enforced minimum Δp (0.1 MPa margin in sample_params)
+  dp_max:  20.0e+6        # Pa — maximum Δp = max(p_i) range
+  # EDA Section 7: σ_vm spans 1590× dynamic range (0.02–31.78 MPa).
+  # log(σ_vm / log_sigma_ref) compresses to a 7.4-unit span; MSE in log space
+  # is equivalent to a relative loss with no ε heuristic needed.
+  log_sigma_ref: 1.0e+6   # Pa — 1 MPa reference for log normalisation
 
 deeponet:
-  param_dim: 4      # (p_i, p_e, E, nu)
+  param_dim: 1      # Δp only — EDA confirmed R²=1.000 for Δp→σ_vm; E and ν irrelevant
   p: 128            # latent dimension shared by branch and trunk
   width: 256        # MLP hidden width
   depth: 3          # number of Linear layers per sub-network
