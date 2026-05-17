@@ -1,8 +1,8 @@
-"""Export the trained Heat2D DeepONet to a TorchScript file for inference-hub.
+"""Export the trained Heat2D DeepONet for inference-hub.
 
 Loads the checkpoint produced by notebooks/heat2d_train_compare.ipynb, wraps
 the model in Heat2DPredictor (applies normalisation + fixed 32×32 output grid),
-and exports to outputs/don_heat2d_scripted.pt via torch.jit.script.
+and exports to outputs/don_heat2d_scripted.pt via torch.export.
 
 Usage (from repo root):
     python scripts/export_heat2d.py
@@ -31,7 +31,7 @@ import yaml
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from neural_operators.adapters.exporters import TorchScriptExporter
+from neural_operators.adapters.exporters import TorchExportExporter
 from neural_operators.models import DeepONet2D, Heat2DPredictor
 from neural_operators.use_cases import ExportModelUseCase
 
@@ -88,14 +88,14 @@ def main() -> None:
     )
 
     # Export
-    use_case = ExportModelUseCase(TorchScriptExporter())
-    out_path = use_case.execute(predictor, args.output)
+    sample = torch.tensor([[0.0, 100.0, 0.0, 0.0, 20.0, 0.02, 5.0]])
+    use_case = ExportModelUseCase(TorchExportExporter())
+    out_path = use_case.execute(predictor, args.output, trace_input=sample)
     print(f"  Done: {out_path}")
 
     # Smoke-test the exported model
-    scripted = torch.jit.load(str(out_path), map_location="cpu")
-    sample = torch.tensor([[0.0, 100.0, 0.0, 0.0, 20.0, 0.02, 5.0]])
-    out = scripted(sample)
+    ep = torch.export.load(str(out_path))
+    out = ep.module()(sample)
     assert out.shape == (1, 32 * 32), f"Unexpected output shape: {out.shape}"
     print(f"  Smoke test passed: output shape {tuple(out.shape)}")
 

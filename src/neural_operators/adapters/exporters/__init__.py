@@ -1,3 +1,3 @@
-from neural_operators.adapters.exporters.torchscript import TorchScriptExporter
+from neural_operators.adapters.exporters.torchscript import TorchExportExporter
 
-__all__ = ["TorchScriptExporter"]
+__all__ = ["TorchExportExporter"]

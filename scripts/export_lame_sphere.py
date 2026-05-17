@@ -1,8 +1,8 @@
-"""Export the trained Lamé sphere DeepONet to a TorchScript file for inference-hub.
+"""Export the trained Lamé sphere DeepONet for inference-hub.
 
 Loads the checkpoint produced by notebooks/lame_sphere_train.ipynb, wraps
 the model in LameSpherePredictor (applies normalisation + fixed radial grid),
-and exports to outputs/don_lame_sphere_scripted.pt via torch.jit.script.
+and exports to outputs/don_lame_sphere_scripted.pt via torch.export.
 
 Usage (from repo root):
     python scripts/export_lame_sphere.py
@@ -32,7 +32,7 @@ import yaml
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from neural_operators.adapters.exporters import TorchScriptExporter
+from neural_operators.adapters.exporters import TorchExportExporter
 from neural_operators.adapters.physics.lame_sphere_solver import A, B
 from neural_operators.models import DeepONet3D, LameSpherePredictor
 from neural_operators.use_cases import ExportModelUseCase
@@ -87,14 +87,14 @@ def main() -> None:
     )
 
     # Export
-    use_case = ExportModelUseCase(TorchScriptExporter())
-    out_path = use_case.execute(predictor, args.output)
+    sample = torch.tensor([[10.0e6, 2.0e6]])  # p_i=10 MPa, p_e=2 MPa
+    use_case = ExportModelUseCase(TorchExportExporter())
+    out_path = use_case.execute(predictor, args.output, trace_input=sample)
     print(f"  Done: {out_path}")
 
     # Smoke-test the exported model
-    scripted = torch.jit.load(str(out_path), map_location="cpu")
-    sample = torch.tensor([[10.0e6, 2.0e6]])  # p_i=10 MPa, p_e=2 MPa
-    out = scripted(sample)
+    ep = torch.export.load(str(out_path))
+    out = ep.module()(sample)
     assert out.shape == (1, args.n_eval_pts), f"Unexpected output shape: {out.shape}"
     print(f"  Smoke test passed: output shape {tuple(out.shape)}")
 

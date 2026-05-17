@@ -1,4 +1,4 @@
-"""Use case: export a trained model to a TorchScript file for inference-hub."""
+"""Use case: export a trained model to a file loadable by inference-hub."""
 
 from __future__ import annotations
 
@@ -32,8 +32,7 @@ class ExportModelUseCase:
         Args:
             model:       Trained ``nn.Module`` to serialise.
             path:        Destination file (passed to the exporter).
-            trace_input: Example input for trace-based exporters; ``None``
-                         when the exporter uses ``torch.jit.script``.
+            trace_input: Representative example input required by the exporter.
 
         Returns:
             The absolute path to the exported file.

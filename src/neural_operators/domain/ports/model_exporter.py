@@ -12,9 +12,9 @@ __all__ = ["IModelExporter"]
 class IModelExporter(ABC):
     """Adapter contract for exporting trained models to a loadable format.
 
-    ``inference-hub``'s ``PyTorchBackend`` expects TorchScript files produced
-    by ``torch.jit.save``.  Implementations are free to use ``torch.jit.script``
-    or ``torch.jit.trace``; the choice is documented per-adapter.
+    ``inference-hub``'s ``PyTorchBackend`` loads the result with
+    ``torch.export.load(path).module()``.  Implementations document their
+    serialisation format.
     """
 
     @abstractmethod
@@ -29,6 +29,6 @@ class IModelExporter(ABC):
         Args:
             model:       The trained model to export.
             path:        Destination file path (created or overwritten).
-            trace_input: Example input tensor(s) required by ``torch.jit.trace``.
-                         May be ``None`` when using ``torch.jit.script``.
+            trace_input: Representative example input tensor required by
+                         ``torch.export``-based implementations.
         """

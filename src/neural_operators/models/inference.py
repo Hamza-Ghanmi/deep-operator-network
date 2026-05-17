@@ -4,10 +4,10 @@ Each wrapper:
 - Accepts a single normalized input tensor (``inference-hub``'s
   ``PyTorchBackend`` converts ``request.inputs`` to one ``float32`` tensor).
 - Stores normalization constants as non-parameter buffers so they are saved
-  and restored with the TorchScript file — callers need no external config.
+  and restored with the exported file — callers need no external config.
 - Evaluates the underlying DeepONet on a fixed evaluation grid stored as a
   buffer, so the output shape is deterministic.
-- Is scriptable via ``torch.jit.script``.
+- Is exportable via ``torch.export``.
 
 Normalisation conventions (matching training in the notebooks):
 

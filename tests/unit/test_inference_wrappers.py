@@ -1,4 +1,4 @@
-"""Smoke tests for inference wrapper forward passes (CPU only, no checkpoints)."""
+"""Smoke tests for inference wrapper forward passes and torch.export (CPU only, no checkpoints)."""
 
 from __future__ import annotations
 
@@ -53,20 +53,20 @@ def test_lame_sphere_predictor_batch():
 
 
 @pytest.mark.unit
-def test_heat2d_predictor_is_scriptable():
+def test_heat2d_predictor_is_exportable():
     base = DeepONet2D(param_dim=7, p=32, width=32, depth=1)
     predictor = Heat2DPredictor(base)
-    scripted = torch.jit.script(predictor)
-    batch = torch.tensor([[0.0, 100.0, 0.0, 0.0, 20.0, 0.02, 5.0]])
-    out = scripted(batch)
+    example = torch.tensor([[0.0, 100.0, 0.0, 0.0, 20.0, 0.02, 5.0]])
+    ep = torch.export.export(predictor, args=(example,))
+    out = ep.module()(example)
     assert out.shape == (1, 32 * 32)
 
 
 @pytest.mark.unit
-def test_lame_sphere_predictor_is_scriptable():
+def test_lame_sphere_predictor_is_exportable():
     base = DeepONet3D(param_dim=1, p=32, width=32, depth=1, trunk_in_dim=1)
     predictor = LameSpherePredictor(base, n_eval_pts=20)
-    scripted = torch.jit.script(predictor)
-    batch = torch.tensor([[10.0e6, 2.0e6]])
-    out = scripted(batch)
+    example = torch.tensor([[10.0e6, 2.0e6]])
+    ep = torch.export.export(predictor, args=(example,))
+    out = ep.module()(example)
     assert out.shape == (1, 20)

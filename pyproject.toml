@@ -43,7 +43,6 @@ packages = ["src/neural_operators"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-asyncio_mode = "auto"
 markers = [
     "unit: fast tests using in-memory stubs, no real data files",
     "integration: tests that require real data files or trained checkpoints",
