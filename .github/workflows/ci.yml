@@ -12,45 +12,34 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
 
-      - name: Install PyTorch (CPU)
-        run: pip install torch==2.5.1+cpu --index-url https://download.pytorch.org/whl/cpu
-
-      - name: Install core dependencies
-        run: pip install numpy scipy matplotlib tqdm pyyaml neuraloperator pyarrow pandas pyvista
-
-      - name: Install package (no-deps to skip CUDA/pyvista)
-        run: pip install -e . --no-deps
-
-      - name: Install dev tools
-        run: pip install "ruff>=0.4" "pytest>=8.0"
+      - name: Install dependencies
+        run: uv sync --group dev
+        env:
+          UV_INDEX_PYTORCH_CU126_URL: "https://download.pytorch.org/whl/cpu"
 
       - name: Lint (ruff)
-        run: ruff check src/ tests/ scripts/
+        run: uv run ruff check src/ tests/ scripts/
 
       - name: Test
-        run: pytest tests/ -v
+        run: uv run pytest tests/ -v
 
   smoke-dataset:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
 
-      - name: Install PyTorch (CPU)
-        run: pip install torch==2.5.1+cpu --index-url https://download.pytorch.org/whl/cpu
-
-      - name: Install core dependencies
-        run: pip install numpy scipy matplotlib tqdm pyyaml neuraloperator pyarrow pandas pyvista
-
-      - name: Install package (no-deps to skip CUDA/pyvista)
-        run: pip install -e . --no-deps
+      - name: Install dependencies
+        run: uv sync
+        env:
+          UV_INDEX_PYTORCH_CU126_URL: "https://download.pytorch.org/whl/cpu"
 
       - name: Generate smoke dataset (50 cases)
-        run: python scripts/generate_heat2d_dataset.py --config configs/heat2d_smoke.yaml
+        run: uv run python scripts/generate_heat2d_dataset.py --config configs/heat2d_smoke.yaml
