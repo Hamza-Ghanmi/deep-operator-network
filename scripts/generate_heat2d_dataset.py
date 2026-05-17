@@ -30,9 +30,15 @@ import yaml
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from neural_operators.data.heat2d import (
-    NX, NY, N_TIMES, T_START, T_END,
-    solve_case, sample_params, save_split,
+from neural_operators.adapters.physics.heat2d_solver import (
+    N_TIMES,
+    NX,
+    NY,
+    T_END,
+    T_START,
+    sample_params,
+    save_split,
+    solve_case,
 )
 
 OUTPUT_DIR = PROJECT_ROOT / "dataset"

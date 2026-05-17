@@ -37,7 +37,7 @@ import yaml
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from neural_operators.data.lame_sphere import SCHEMA, rows_to_table
+from neural_operators.adapters.physics.lame_sphere_solver import SCHEMA, rows_to_table
 
 OUTPUT_DIR = PROJECT_ROOT / "dataset"
 OUTPUT_DIR.mkdir(exist_ok=True)

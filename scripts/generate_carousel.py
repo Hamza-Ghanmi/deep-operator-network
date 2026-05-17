@@ -24,13 +24,12 @@ import sys
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-import matplotlib.gridspec as gridspec
+import numpy as np
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.patches import FancyBboxPatch
-import numpy as np
 from PIL import Image
 
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -99,11 +98,12 @@ if CACHED:
     print("Skipping inference (--cached mode).")
 
 else:
-    import torch
     import pyarrow.parquet as pq
+    import torch
+    from neuralop.models import FNO
+
     from neural_operators.models import DeepONet2D
     from neural_operators.utils import metrics_summary
-    from neuralop.models import FNO
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Device: {device}")

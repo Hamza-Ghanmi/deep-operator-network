@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import pytest
 import torch
 
 from neural_operators.models import DeepONet, DeepONet2D, mlp
 
 
+@pytest.mark.unit
 def test_deeponet_forward():
     branch_net = mlp(100, 128, 4)
     trunk_net = mlp(1, 128, 4)
@@ -16,6 +18,7 @@ def test_deeponet_forward():
     assert out.shape == (8, 1)
 
 
+@pytest.mark.unit
 def test_deeponet2d_forward():
     model = DeepONet2D(param_dim=7, p=128, width=256, depth=3)
 
@@ -23,6 +26,7 @@ def test_deeponet2d_forward():
     assert out.shape == (4, 1024)
 
 
+@pytest.mark.unit
 def test_fno_forward():
     from neuralop.models import FNO
 

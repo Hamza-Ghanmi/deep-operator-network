@@ -14,11 +14,15 @@ Do not import this module inside a tight loop.
 
 from __future__ import annotations
 
+from concurrent.futures import ProcessPoolExecutor
+from pathlib import Path
+
 import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pyvista as pv
-from pathlib import Path
+
+from neural_operators.domain.ports.physics_solver import IPhysicsSolver
 
 __all__ = [
     "A", "B", "N_PTS",
@@ -30,6 +34,7 @@ __all__ = [
     "rows_to_table",
     "save_split",
     "SCHEMA",
+    "LameSolver",
 ]
 
 # ── Geometry constants (fixed across all cases) ───────────────────────────────
@@ -48,7 +53,7 @@ NU_RANGE: tuple[float, float] = (0.20,    0.45)     # Poisson's ratio [-]
 # The VTK stores coordinates in millimetres; divide by 1000 to get metres.
 # Inherited by fork workers at zero cost (Linux default fork start-method).
 
-_VTK_PATH = Path(__file__).parent.parent.parent.parent / "data" / "sphere-FEMMeshGmsh.vtk"
+_VTK_PATH = Path(__file__).parent.parent.parent.parent.parent / "data" / "sphere-FEMMeshGmsh.vtk"
 
 
 def _load_vtk_vertices(path: Path) -> np.ndarray:
@@ -86,7 +91,7 @@ _DENOM: float = _B3 - _A3
 
 # ── Parameter sampling ────────────────────────────────────────────────────────
 
-def sample_params(n_cases: int, seed: int) -> list[tuple]:
+def sample_params(n_cases: int, seed: int) -> list[tuple]:  # type: ignore[type-arg]
     """Sample random physics parameters for n_cases dataset entries.
 
     Returns a list of (case_id, p_i, p_e, E, nu) tuples, all values in SI units.
@@ -112,7 +117,7 @@ def sample_params(n_cases: int, seed: int) -> list[tuple]:
 
 # ── Analytical solver ─────────────────────────────────────────────────────────
 
-def solve_case(args: tuple) -> list[dict]:
+def solve_case(args: tuple) -> list[dict]:  # type: ignore[type-arg]
     """Evaluate the Lamé analytical solution at all N_PTS query points.
 
     Args:
@@ -178,7 +183,7 @@ _FIELD_KEYS = ("case_id", "p_i", "p_e", "E", "nu",
                "sigma_vm", "u_r", "sigma_r", "sigma_theta")
 
 
-def rows_to_table(rows: list[dict], extra_meta: dict | None = None) -> pa.Table:
+def rows_to_table(rows: list[dict], extra_meta: dict | None = None) -> pa.Table:  # type: ignore[type-arg]
     """Convert row dicts from solve_case into a PyArrow table."""
     arrays = {k: [r[k] for r in rows] for k in _FIELD_KEYS}
     pa_arrays = {
@@ -192,7 +197,7 @@ def rows_to_table(rows: list[dict], extra_meta: dict | None = None) -> pa.Table:
         "sigma_r":     pa.array(arrays["sigma_r"],     type=pa.list_(pa.float32())),
         "sigma_theta": pa.array(arrays["sigma_theta"], type=pa.list_(pa.float32())),
     }
-    meta = {
+    meta: dict[bytes, bytes] = {
         b"inner_radius": str(A).encode(),
         b"outer_radius": str(B).encode(),
         b"N_PTS":        str(N_PTS).encode(),
@@ -205,7 +210,7 @@ def rows_to_table(rows: list[dict], extra_meta: dict | None = None) -> pa.Table:
 
 
 def save_split(
-    rows: list[dict],
+    rows: list[dict],  # type: ignore[type-arg]
     path: Path,
     split_name: str,
     n_cases_split: int,
@@ -215,3 +220,22 @@ def save_split(
     pq.write_table(table, path, compression="snappy")
     mb = path.stat().st_size / 1e6
     print(f"  Saved {split_name:5s}: {len(rows):>6} rows  ({n_cases_split} cases) → {path}  [{mb:.1f} MB]")
+
+
+# ── Hexagonal adapter ─────────────────────────────────────────────────────────
+
+class LameSolver(IPhysicsSolver[tuple, list[dict]]):  # type: ignore[type-arg]
+    """IPhysicsSolver implementation using the exact Lamé analytical solution.
+
+    Uses ``ProcessPoolExecutor`` with ``fork`` workers for CPU-bound parallelism.
+    Module-level QUERY_XYZ and precomputed geometry factors are inherited by
+    fork workers at zero serialisation cost.
+    """
+
+    def sample_params(self, n_cases: int, seed: int) -> list[tuple]:  # type: ignore[type-arg]
+        return sample_params(n_cases, seed)
+
+    def batch_solve(self, params_list: list[tuple], n_workers: int | None = None) -> list[list[dict]]:  # type: ignore[type-arg]
+        """Solve all cases in parallel and return results in input order."""
+        with ProcessPoolExecutor(max_workers=n_workers) as pool:
+            return list(pool.map(solve_case, params_list))

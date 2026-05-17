@@ -12,20 +12,26 @@ Do not import this module inside a tight loop.
 
 from __future__ import annotations
 
+from concurrent.futures import ProcessPoolExecutor
+from pathlib import Path
+
 import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
-from pathlib import Path
+
+from neural_operators.domain.ports.physics_solver import IPhysicsSolver
 
 __all__ = [
     "NX", "NY", "Lx", "Ly",
     "N_TIMES", "T_START", "T_END",
+    "T_BC_RANGE", "T_INIT_RANGE", "ALPHA_RANGE",
     "solve_case",
     "sample_params",
     "analytical_field",
     "rows_to_table",
     "save_split",
     "SCHEMA",
+    "FourierHeat2DSolver",
 ]
 
 # ── Physics / grid constants ──────────────────────────────────────────────────
@@ -168,7 +174,7 @@ def analytical_field(
     return _solve_heat2d(T_L, T_R, T_B, T_T, T_init, alpha, t_values)
 
 
-def solve_case(args: tuple) -> list[dict]:
+def solve_case(args: tuple) -> list[dict]:  # type: ignore[type-arg]
     """Solve one case and return Parquet-ready row dicts.
 
     ``args`` must be ``(case_id, T_L, T_R, T_B, T_T, T_init, alpha)``.
@@ -193,7 +199,7 @@ def solve_case(args: tuple) -> list[dict]:
     ]
 
 
-def sample_params(n_cases: int, seed: int) -> list[tuple]:
+def sample_params(n_cases: int, seed: int) -> list[tuple]:  # type: ignore[type-arg]
     """Sample random physical parameters for ``n_cases`` cases.
 
     Returns a list of ``(case_id, T_L, T_R, T_B, T_T, T_init, alpha)`` tuples
@@ -226,7 +232,7 @@ SCHEMA = pa.schema([
 ])
 
 
-def rows_to_table(rows: list[dict], extra_meta: dict | None = None) -> pa.Table:
+def rows_to_table(rows: list[dict], extra_meta: dict | None = None) -> pa.Table:  # type: ignore[type-arg]
     """Convert row dicts from ``solve_case`` into a PyArrow table."""
     keys = ("case_id", "t", "alpha", "T_L", "T_R", "T_B", "T_T", "T_init", "T_field")
     arrays = {k: [r[k] for r in rows] for k in keys}
@@ -241,7 +247,7 @@ def rows_to_table(rows: list[dict], extra_meta: dict | None = None) -> pa.Table:
         "T_init":  pa.array(arrays["T_init"],  type=pa.float32()),
         "T_field": pa.array(arrays["T_field"], type=pa.list_(pa.float32())),
     }
-    meta = {
+    meta: dict[bytes, bytes] = {
         b"grid_NX":  str(NX).encode(),
         b"grid_NY":  str(NY).encode(),
         b"Lx":       b"1.0",
@@ -257,7 +263,7 @@ def rows_to_table(rows: list[dict], extra_meta: dict | None = None) -> pa.Table:
 
 
 def save_split(
-    rows: list[dict],
+    rows: list[dict],  # type: ignore[type-arg]
     path: Path,
     split_name: str,
     n_cases_split: int,
@@ -267,3 +273,21 @@ def save_split(
     pq.write_table(table, path, compression="snappy")
     mb = path.stat().st_size / 1e6
     print(f"  Saved {split_name:5s}: {len(rows):>6} rows  ({n_cases_split} cases) → {path}  [{mb:.1f} MB]")
+
+
+# ── Hexagonal adapter ─────────────────────────────────────────────────────────
+
+class FourierHeat2DSolver(IPhysicsSolver[tuple, list[dict]]):  # type: ignore[type-arg]
+    """IPhysicsSolver implementation using the Fourier analytical 2-D heat solver.
+
+    Uses ``ProcessPoolExecutor`` with ``fork`` workers for CPU-bound parallelism.
+    Module-level precomputed arrays are inherited by workers at zero cost.
+    """
+
+    def sample_params(self, n_cases: int, seed: int) -> list[tuple]:  # type: ignore[type-arg]
+        return sample_params(n_cases, seed)
+
+    def batch_solve(self, params_list: list[tuple], n_workers: int | None = None) -> list[list[dict]]:  # type: ignore[type-arg]
+        """Solve all cases in parallel and return results in input order."""
+        with ProcessPoolExecutor(max_workers=n_workers) as pool:
+            return list(pool.map(solve_case, params_list))

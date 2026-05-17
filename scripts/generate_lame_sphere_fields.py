@@ -37,7 +37,13 @@ import yaml
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from neural_operators.data.lame_sphere import A, B, N_PTS, sample_params, solve_case
+from neural_operators.adapters.physics.lame_sphere_solver import (
+    N_PTS,
+    A,
+    B,
+    sample_params,
+    solve_case,
+)
 
 _VTK_BASE_PATH = str(PROJECT_ROOT / "data" / "sphere-FEMMeshGmsh.vtk")
 

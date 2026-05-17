@@ -47,17 +47,14 @@ Full figures and training curves: [RESULTS.md](RESULTS.md)
 
 ## Reproduce from scratch
 
-**Requirements:** Python 3.10+, GPU optional.
+**Requirements:** Python 3.12+, GPU optional. Uses [uv](https://docs.astral.sh/uv/).
 
 ```bash
 git clone https://github.com/Hamza-Ghanmi/deep-operator-network.git
 cd deep-operator-network
 
-python -m venv .venv && source .venv/bin/activate
-
-# CPU (swap cu121 for GPU):
-pip install torch==2.5.1+cpu --index-url https://download.pytorch.org/whl/cpu
-pip install -e .
+# CPU (swap cu121 → cpu in pyproject.toml if no CUDA):
+uv sync
 ```
 
 ### Case 1: 2D Heat Equation
@@ -89,49 +86,111 @@ The full Lamé sphere dataset is ~30 GB. On the first notebook run the data-load
 
 ---
 
+## Serving with inference-hub
+
+Trained models are exported as TorchScript files that [`inference-hub`](../inference-hub) can load and serve over HTTP. No model architecture code is needed in the serving layer — the `.pt` file is self-contained.
+
+```bash
+# After training (run from repo root):
+python scripts/export_heat2d.py       # → outputs/don_heat2d_scripted.pt
+python scripts/export_lame_sphere.py  # → outputs/don_lame_sphere_scripted.pt
+```
+
+Load and query via inference-hub:
+
+```bash
+# Load the heat2d model
+curl -X POST http://localhost:8000/api/v1/models/heat2d/load \
+  -H "Content-Type: application/json" \
+  -d '{"path": "/path/to/don_heat2d_scripted.pt", "framework": "pytorch"}'
+
+# Predict: [T_L, T_R, T_B, T_T, T_init, alpha, t] in raw SI units
+curl -X POST http://localhost:8000/api/v1/models/heat2d/infer \
+  -H "Content-Type: application/json" \
+  -d '{"inputs": [[0.0, 100.0, 0.0, 0.0, 20.0, 0.02, 5.0]]}'
+# → (1, 1024) temperature field in °C on a fixed 32×32 grid
+
+# Load and query the Lamé sphere model
+curl -X POST http://localhost:8000/api/v1/models/lame_sphere/load \
+  -H "Content-Type: application/json" \
+  -d '{"path": "/path/to/don_lame_sphere_scripted.pt", "framework": "pytorch"}'
+
+curl -X POST http://localhost:8000/api/v1/models/lame_sphere/infer \
+  -H "Content-Type: application/json" \
+  -d '{"inputs": [[10e6, 2e6]]}'
+# → (1, 200) σ_vm in Pa on a fixed radial grid [0.2 m, 0.5 m]
+```
+
+The inference wrappers (`models/inference.py`) embed normalisation constants as TorchScript buffers — callers pass raw SI units, no external config needed.
+
+---
+
 ## Run tests and lint
 
 ```bash
-pip install -e ".[dev]"
-pytest tests/ -v
-ruff check src/ tests/ scripts/
+uv run pytest -v -m unit      # fast unit tests (no data files or checkpoints needed)
+uv run pytest -v               # all tests
+uv run ruff check src/ tests/ scripts/
+uv run mypy src/
 ```
 
-CI runs on every push via GitHub Actions: ruff lint, 6 pytest smoke tests, and a 50-case end-to-end heat2d dataset generation.
+CI runs on every push via GitHub Actions: ruff lint, 25 pytest unit tests, and a 50-case end-to-end heat2d dataset generation.
 
 ---
 
 ## Project structure
 
 ```
-src/neural_operators/
-├── models/deeponet.py        # mlp(), DeepONet, DeepONet2D, DeepONet3D
-├── data/heat2d.py            # Fourier solver, solve_case(), analytical_field()
-├── data/lame_sphere.py       # Lamé analytical solver, solve_case(), QUERY_XYZ
-├── data/anti_derivative.py   # loader for the NGC anti-derivative dataset
-└── utils/metrics.py          # mse(), relative_l2(), metrics_summary()
+src/neural_operators/           # installable package (hexagonal architecture)
+├── domain/
+│   ├── entities/               # pure @dataclass types — no framework imports
+│   │   ├── heat2d.py           #   Heat2DParams, Heat2DField
+│   │   └── lame_sphere.py      #   LameSphereParams, LameSphereField
+│   └── ports/
+│       ├── physics_solver.py   #   IPhysicsSolver[P,R] ABC
+│       └── model_exporter.py   #   IModelExporter ABC
+├── models/
+│   ├── deeponet.py             # mlp(), DeepONet, DeepONet2D, DeepONet3D
+│   └── inference.py            # Heat2DPredictor, LameSpherePredictor (TorchScript wrappers)
+├── use_cases/
+│   ├── generate_dataset.py     # GenerateDatasetUseCase
+│   └── export_model.py         # ExportModelUseCase
+├── adapters/
+│   ├── physics/
+│   │   ├── heat2d_solver.py    #   FourierHeat2DSolver + module-level solve_case / sample_params
+│   │   └── lame_sphere_solver.py #   LameSolver + module-level solve_case / sample_params
+│   └── exporters/
+│       └── torchscript.py      #   TorchScriptExporter (script → trace fallback)
+├── data/anti_derivative.py     # loader for the NGC anti-derivative dataset
+└── utils/metrics.py            # mse(), relative_l2(), metrics_summary()
 configs/
-├── heat2d.yaml               # full run (5 000 cases, 200 epochs)
-├── heat2d_smoke.yaml         # quick demo (50 cases)
-└── lame_sphere.yaml          # Lamé sphere (5 000 cases, 100 epochs, laptop subsampling)
+├── heat2d.yaml                 # full run (5 000 cases, 200 epochs)
+├── heat2d_smoke.yaml           # quick demo (50 cases)
+└── lame_sphere.yaml            # Lamé sphere (5 000 cases, 100 epochs, laptop subsampling)
 notebooks/
-├── heat2d_train_compare.ipynb   # FNO vs DeepONet2D on heat equation
-├── lame_sphere_train.ipynb      # DeepONet3D on Lamé sphere (EDA-driven improvements)
-├── eda_lame_sphere.ipynb        # exploratory data analysis — Lamé sphere dataset
-├── eda_anti_derivative.ipynb    # exploratory data analysis — anti-derivative dataset
-└── fno_anti_derivative.ipynb    # FNO on 1D anti-derivative (bonus)
+├── heat2d_train_compare.ipynb  # FNO vs DeepONet2D on heat equation
+├── lame_sphere_train.ipynb     # DeepONet3D on Lamé sphere (EDA-driven improvements)
+├── eda_lame_sphere.ipynb       # exploratory data analysis — Lamé sphere dataset
+├── eda_anti_derivative.ipynb   # exploratory data analysis — anti-derivative dataset
+└── fno_anti_derivative.ipynb   # FNO on 1D anti-derivative (bonus)
 scripts/
 ├── generate_heat2d_dataset.py      # heat2d Parquet dataset (parallel, --config flag)
 ├── generate_lame_sphere_fields.py  # per-case analytical field computation
 ├── generate_lame_sphere_dataset.py # assemble Lamé sphere Parquet splits
+├── export_heat2d.py                # → outputs/don_heat2d_scripted.pt (inference-hub)
+├── export_lame_sphere.py           # → outputs/don_lame_sphere_scripted.pt (inference-hub)
 ├── generate_carousel.py            # outputs/heat2d_carousel.pdf
 ├── generate_animation.py           # outputs/heat2d_animation.mp4
 └── render_lame_sphere_3d.py        # outputs/lame_sphere_3d_*.png
 tests/
-├── test_heat2d.py               # solve_case, analytical_field smoke tests
-└── test_models.py               # DeepONet, DeepONet2D, FNO forward-pass tests
+├── test_heat2d.py                  # solve_case, analytical_field smoke tests
+├── test_models.py                  # DeepONet, DeepONet2D, FNO forward-pass tests
+└── unit/
+    ├── test_domain_entities.py     # Heat2DParams, LameSphereParams entity tests
+    ├── test_export_use_case.py     # ExportModelUseCase with FakeExporter stub
+    └── test_inference_wrappers.py  # predictor shapes + TorchScript scriptability
 docs/
-└── lame_sphere_problem.md       # full problem statement, derivation, FEM setup
+└── lame_sphere_problem.md          # full problem statement, derivation, FEM setup
 ```
 
 ---
@@ -161,7 +220,7 @@ Combined, these changes improved mean rel-L2 from 0.026 to 0.008 and max absolut
 - NumPy, SciPy, matplotlib, tqdm
 - PyArrow + pandas (Parquet datasets)
 - PyVista (Lamé sphere mesh loading and 3D rendering)
-- ruff, pytest (dev)
+- ruff, mypy, pytest (dev)
 
 ---
 

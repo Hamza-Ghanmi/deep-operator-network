@@ -15,9 +15,10 @@ import sys
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import matplotlib.pyplot as plt
 import numpy as np
 import pyarrow.parquet as pq
 import torch
@@ -25,8 +26,9 @@ import torch
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from neural_operators.models import DeepONet2D
 from neuralop.models import FNO
+
+from neural_operators.models import DeepONet2D
 
 DATA_DIR = PROJECT_ROOT / "dataset"
 OUT_DIR  = PROJECT_ROOT / "outputs"

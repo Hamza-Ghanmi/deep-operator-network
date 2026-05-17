@@ -21,8 +21,8 @@ import yaml
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
+from neural_operators.data.anti_derivative import load_anti_derivative
 from neural_operators.models import DeepONet, mlp
-from neural_operators.data import load_anti_derivative
 
 
 def main() -> None:

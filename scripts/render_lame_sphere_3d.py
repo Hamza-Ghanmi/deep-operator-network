@@ -16,8 +16,8 @@ import torch
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
+from neural_operators.adapters.physics.lame_sphere_solver import QUERY_XYZ, A, B, load_sphere_mesh
 from neural_operators.models import DeepONet3D
-from neural_operators.data.lame_sphere import A, B, QUERY_XYZ, load_sphere_mesh
 
 DATA_DIR = REPO_ROOT / "dataset"
 OUT_DIR  = REPO_ROOT / "outputs"

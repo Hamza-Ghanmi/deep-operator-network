@@ -2,7 +2,7 @@
 name = "neural-operators"
 version = "0.1.0"
 description = "Neural operator library: FNO and DeepONet for PDE operator learning"
-requires-python = ">=3.10"
+requires-python = ">=3.12,<3.14"
 dependencies = [
     "torch==2.5.1",
     "nvidia-cublas-cu12",
@@ -34,10 +34,11 @@ dependencies = [
 dev = [
     "jupyter>=1.0.0",
     "ipykernel>=6.0.0",
+    "ruff>=0.8.0",
+    "pytest>=8.3.0",
+    "pytest-cov>=6.0.0",
+    "mypy>=1.13.0",
 ]
-
-[project.optional-dependencies]
-dev = ["ruff>=0.4", "pytest>=8.0"]
 
 [tool.uv.sources]
 torch = { index = "pytorch-cu121" }
@@ -56,18 +57,24 @@ packages = ["src/neural_operators"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py312"
 
 [tool.ruff.lint]
-select = ["E", "F", "I"]
-# E501: line length handled by formatter
-# E701/E702: deliberate semicolon / inline-colon style in solver code
-# E402: sys.path.insert before imports is required in standalone scripts
-# I001: import ordering (cosmetic, pre-existing)
-ignore = ["E501", "E701", "E702", "E402", "I001"]
+select = ["E", "F", "I", "UP"]
+ignore = ["E501", "E701", "E702", "UP046"]
 
 [tool.ruff.lint.per-file-ignores]
-"scripts/*" = ["F401"]  # unused imports in pre-existing script code
+"scripts/*" = ["E402"]  # sys.path.insert before imports required in standalone scripts
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "unit: fast tests using in-memory stubs, no real data files",
+    "integration: tests that require real data files or trained checkpoints",
+]
