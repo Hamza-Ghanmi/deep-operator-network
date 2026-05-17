@@ -77,8 +77,12 @@ _SIN_MX_F = np.sin(np.outer(_m_arr * np.pi / Lx, _x_fine))   # (M, FINE)
 _SIN_NY_F = np.sin(np.outer(_n_arr * np.pi / Ly, _y_fine))   # (N, FINE)
 
 # Quadrature weights (trapezoidal)
-_wx = np.ones(FINE); _wx[0] = _wx[-1] = 0.5; _wx *= Lx / (FINE - 1)
-_wy = np.ones(FINE); _wy[0] = _wy[-1] = 0.5; _wy *= Ly / (FINE - 1)
+_wx = np.ones(FINE)
+_wx[0] = _wx[-1] = 0.5
+_wx *= Lx / (FINE - 1)
+_wy = np.ones(FINE)
+_wy[0] = _wy[-1] = 0.5
+_wy *= Ly / (FINE - 1)
 
 # Default time grid (module-level so fork workers see it without recomputing)
 _t_values = np.logspace(np.log10(T_START), np.log10(T_END), N_TIMES)
@@ -127,10 +131,14 @@ def _steady_vec(
 ) -> np.ndarray:
     """Steady-state field (Nx, Ny) via vectorised matrix multiplications."""
     u = np.zeros((skx.shape[1], sb.shape[1]))
-    if TB: u += TB * (_c_arr[:, None] * skx).T @ sb
-    if TT: u += TT * (_c_arr[:, None] * skx).T @ st
-    if TL: u += TL * sl.T @ (_c_arr[:, None] * sky)
-    if TR: u += TR * sr.T @ (_c_arr[:, None] * sky)
+    if TB:
+        u += TB * (_c_arr[:, None] * skx).T @ sb
+    if TT:
+        u += TT * (_c_arr[:, None] * skx).T @ st
+    if TL:
+        u += TL * sl.T @ (_c_arr[:, None] * sky)
+    if TR:
+        u += TR * sr.T @ (_c_arr[:, None] * sky)
     return u
 
 

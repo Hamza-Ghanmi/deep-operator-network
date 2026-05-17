@@ -103,7 +103,8 @@ def main() -> None:
     flat_rows = [row for case_rows in all_rows for row in case_rows]
 
     rng      = np.random.default_rng(SEED)
-    ids      = np.arange(N_CASES); rng.shuffle(ids)
+    ids      = np.arange(N_CASES)
+    rng.shuffle(ids)
     n_train  = int(round(SPLIT[0] * N_CASES))
     n_val    = int(round(SPLIT[1] * N_CASES))
     n_test   = N_CASES - n_train - n_val

@@ -48,8 +48,14 @@ markers = [
     "integration: tests that require real data files or trained checkpoints",
 ]
 
+[tool.ruff]
+line-length = 120
+
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/*" = ["E402"]
 
 [tool.mypy]
 python_version = "3.12"

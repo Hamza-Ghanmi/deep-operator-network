@@ -1,11 +1,16 @@
-"""Smoke tests for inference wrapper forward passes and torch.export (CPU only, no checkpoints)."""
+"""Smoke tests for inference wrapper forward passes and torch.export(CPU only, no checkpoints)."""
 
 from __future__ import annotations
 
 import pytest
 import torch
 
-from neural_operators.models import DeepONet2D, DeepONet3D, Heat2DPredictor, LameSpherePredictor
+from neural_operators.models import (
+    DeepONet2D,
+    DeepONet3D,
+    Heat2DPredictor,
+    LameSpherePredictor,
+)
 
 
 @pytest.mark.unit

@@ -76,21 +76,28 @@ if CACHED:
     ] if not p.exists()]
     if missing:
         print("ERROR: --cached requires these files to exist (run without --cached first):")
-        for p in missing: print(f"  {p}")
+        for p in missing:
+            print(f"  {p}")
         sys.exit(1)
 
     # Check if metrics cache file exists
     metrics_path = OUT_DIR / "heat2d_metrics.npz"
     if metrics_path.exists():
         m = np.load(metrics_path)
-        fno_mse, fno_rel, fno_std, fno_max = float(m["fno_mse"]), float(m["fno_rel"]), float(m["fno_std"]), float(m["fno_max"])
-        don_mse, don_rel, don_std, don_max = float(m["don_mse"]), float(m["don_rel"]), float(m["don_std"]), float(m["don_max"])
+        fno_mse, fno_rel = float(m["fno_mse"]), float(m["fno_rel"])
+        fno_std, fno_max = float(m["fno_std"]), float(m["fno_max"])
+        don_mse, don_rel = float(m["don_mse"]), float(m["don_rel"])
+        don_std, don_max = float(m["don_std"]), float(m["don_max"])
         print(f"Loaded cached metrics from {metrics_path}")
     elif all(v is not None for v in CACHED_METRICS.values()):
-        fno_mse = CACHED_METRICS["fno_mse"]; fno_rel = CACHED_METRICS["fno_rel"]
-        fno_std = CACHED_METRICS["fno_std"]; fno_max = CACHED_METRICS["fno_max"]
-        don_mse = CACHED_METRICS["don_mse"]; don_rel = CACHED_METRICS["don_rel"]
-        don_std = CACHED_METRICS["don_std"]; don_max = CACHED_METRICS["don_max"]
+        fno_mse = CACHED_METRICS["fno_mse"]
+        fno_rel = CACHED_METRICS["fno_rel"]
+        fno_std = CACHED_METRICS["fno_std"]
+        fno_max = CACHED_METRICS["fno_max"]
+        don_mse = CACHED_METRICS["don_mse"]
+        don_rel = CACHED_METRICS["don_rel"]
+        don_std = CACHED_METRICS["don_std"]
+        don_max = CACHED_METRICS["don_max"]
     else:
         print("ERROR: --cached requires either outputs/heat2d_metrics.npz or CACHED_METRICS "
               "populated in the script. Run once without --cached to generate the cache.")
@@ -188,7 +195,8 @@ if not CACHED:
             axes_fc[row, col].set_xlabel(f"rel-L2 = {rl:.4f}", fontsize=7)
         axes_fc[row, 0].set_ylabel(f"Sample {si}", fontsize=8)
         for ax in axes_fc[row]:
-            ax.set_aspect("equal"); ax.tick_params(labelsize=6)
+            ax.set_aspect("equal")
+            ax.tick_params(labelsize=6)
     fig_fc.suptitle("True field and absolute error — FNO vs DeepONet (test set)", fontsize=11)
     fig_fc.savefig(OUT_DIR / "heat2d_field_comparison.png", dpi=120)
     plt.close(fig_fc)
@@ -201,9 +209,11 @@ if not CACHED:
         ax_et.errorbar(unique_t, mean_err, yerr=std_err, marker=marker, ms=5,
                        lw=1.5, capsize=3, label=label, color=color)
     ax_et.set_xscale("log")
-    ax_et.set_xlabel("Time t [s]"); ax_et.set_ylabel("Relative L2 error")
+    ax_et.set_xlabel("Time t [s]")
+    ax_et.set_ylabel("Relative L2 error")
     ax_et.set_title("Error vs Time — FNO vs DeepONet (test set, mean ± std)")
-    ax_et.legend(); ax_et.grid(True, which="both", ls="--", alpha=0.4)
+    ax_et.legend()
+    ax_et.grid(True, which="both", ls="--", alpha=0.4)
     fig_et.tight_layout()
     fig_et.savefig(OUT_DIR / "heat2d_error_vs_time.png", dpi=120)
     plt.close(fig_et)
@@ -272,7 +282,8 @@ with PdfPages(OUT_DIR / "heat2d_carousel.pdf") as pdf:
     # Slide 2 — The Problem
     fig = new_slide("The Problem", "Learn the parameter-to-field operator")
     ax = fig.add_axes([0.07, 0.10, 0.86, 0.70])
-    ax.set_facecolor(PANEL); ax.axis("off")
+    ax.set_facecolor(PANEL)
+    ax.axis("off")
     dom_x, dom_y, dom_w, dom_h = 0.25, 0.20, 0.50, 0.55
     ax.add_patch(FancyBboxPatch((dom_x, dom_y), dom_w, dom_h,
                                 boxstyle="round,pad=0,rounding_size=0.02",
@@ -324,7 +335,8 @@ with PdfPages(OUT_DIR / "heat2d_carousel.pdf") as pdf:
         y = row_start - i * row_step
         if i % 2 == 0:
             ax_bg = fig.add_axes([0.07, y - 0.06, 0.86, row_step], zorder=0)
-            ax_bg.set_facecolor("#1f1f35"); ax_bg.axis("off")
+            ax_bg.set_facecolor("#1f1f35")
+            ax_bg.axis("off")
         fig.text(col_left,        y, label,   ha="left",   fontsize=10, color=GREY,   fontweight="bold")
         fig.text(col_mid+0.10,    y, fno_val, ha="center", fontsize=10, color=BLUE)
         fig.text(col_right+0.13,  y, don_val, ha="center", fontsize=10, color=ORANGE)
@@ -353,7 +365,8 @@ with PdfPages(OUT_DIR / "heat2d_carousel.pdf") as pdf:
     # Slide 5 — Analytical Baseline
     fig = new_slide("Analytical Solution", "Ground truth source and its inherent limitations")
     ax = fig.add_axes([0.07, 0.09, 0.86, 0.72])
-    ax.set_facecolor(PANEL); ax.axis("off")
+    ax.set_facecolor(PANEL)
+    ax.axis("off")
     ax.text(0.04, 0.95, "Source of error in the analytical solution",
             ha="left", va="top", fontsize=11, fontweight="bold", color=GREEN, transform=ax.transAxes)
     y_pos = 0.83
@@ -393,7 +406,8 @@ with PdfPages(OUT_DIR / "heat2d_carousel.pdf") as pdf:
         y = row0 - i * rstep
         if i % 2 == 0:
             ax_bg = fig.add_axes([0.07, y - rstep*0.55, 0.86, rstep], zorder=0)
-            ax_bg.set_facecolor("#1f1f35"); ax_bg.axis("off")
+            ax_bg.set_facecolor("#1f1f35")
+            ax_bg.axis("off")
         try:
             fno_num = float(fno_v.replace(" %","").replace(" K","").replace(" h",""))
             don_num = float(don_v.replace(" %","").replace(" K","").replace(" s","").replace(" h",""))
@@ -414,7 +428,8 @@ with PdfPages(OUT_DIR / "heat2d_carousel.pdf") as pdf:
     # Slide 7 — Field Comparison
     fig = new_slide("Field Comparison", "True field  |  FNO error  |  DON error  (4 test samples)")
     ax = fig.add_axes([0.02, 0.09, 0.96, 0.73])
-    ax.imshow(np.array(Image.open(OUT_DIR / "heat2d_field_comparison.png"))); ax.axis("off")
+    ax.imshow(np.array(Image.open(OUT_DIR / "heat2d_field_comparison.png")))
+    ax.axis("off")
     fig.text(0.5, 0.04, "FNO errors are visibly smaller and more evenly distributed across the domain",
              ha="center", fontsize=9, color=GREY)
     save(pdf, fig)
@@ -422,7 +437,8 @@ with PdfPages(OUT_DIR / "heat2d_carousel.pdf") as pdf:
     # Slide 8 — Error vs Time
     fig = new_slide("Error vs Time", "Relative L₂ error per time step (mean ± std)")
     ax = fig.add_axes([0.04, 0.11, 0.92, 0.70])
-    ax.imshow(np.array(Image.open(OUT_DIR / "heat2d_error_vs_time.png"))); ax.axis("off")
+    ax.imshow(np.array(Image.open(OUT_DIR / "heat2d_error_vs_time.png")))
+    ax.axis("off")
     fig.text(0.5, 0.04, "Both models struggle at early times (sharp gradients) — FNO recovers faster",
              ha="center", fontsize=9, color=GREY)
     save(pdf, fig)
@@ -437,7 +453,8 @@ with PdfPages(OUT_DIR / "heat2d_carousel.pdf") as pdf:
     ]):
         y = 0.74 - i * 0.16
         ax_bar = fig.add_axes([0.07, y - 0.04, 0.008, 0.10])
-        ax_bar.set_facecolor(color); ax_bar.axis("off")
+        ax_bar.set_facecolor(color)
+        ax_bar.axis("off")
         fig.text(0.10, y + 0.03, label, ha="left", fontsize=13, fontweight="bold", color=color)
         fig.text(0.10, y - 0.02, text,  ha="left", fontsize=10, color=WHITE, linespacing=1.5)
     fig.text(0.5, 0.07,

@@ -3,15 +3,11 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Generic, TypeVar
 
 __all__ = ["IPhysicsSolver"]
 
-P = TypeVar("P")
-R = TypeVar("R")
 
-
-class IPhysicsSolver(ABC, Generic[P, R]):
+class IPhysicsSolver[P, R](ABC):
     """Adapter contract for generating physics simulation datasets.
 
     Type parameters:
